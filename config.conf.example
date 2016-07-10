@@ -1,0 +1,7 @@
+[main]
+bot_token = 111111:FFFdAw_pYKyPqZnXgKDz9MqD031sQ0WdGP1
+jenkins_url = http://jenkins.mysite.ru
+
+[jobs]
+job1 = FIRST_JENKINS_JOB_NAME
+job2 = SECOND_JENKINS_JOB_NAME
