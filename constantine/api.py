@@ -1,15 +1,17 @@
+import datetime
+import re
 import sys
 import time
 from functools import partial
 from threading import Lock
 
-import re
 from telebot import TeleBot
 from telebot.util import ThreadPool
 
 from constantine.jenkins import JobRunner
+from constantine.speech import reply_speech
 
-WAIT_TIME = 7
+WAIT_TIME = 9
 
 pending_jobs = {}
 pending_jobs_lock = Lock()
@@ -54,25 +56,21 @@ class Constantine:
     def wake_up(self):
         JobRunner.jenkins_auth(self)
         self.subscription()
-        sys.stdout.write('Bot running\n')
+        sys.stdout.write('{} Bot running\n'.format(datetime.datetime.now()))
         self.bot.polling(none_stop=True)
 
     def subscription(self):
         self.bot.message_handler(regexp='/build_.*')(self.build_handler)
         self.bot.message_handler(regexp='/cancel_.*')(self.cancel_handler)
+        self.bot.message_handler(func=lambda m: True)(self.all_handler)
 
     def exec_task(self, *args, **kwargs):
         return self.bot._exec_task(*args, **kwargs)
 
     def build_handler(self, msg):
         result = self.build_pattern.match(msg.text)
-        if not result or result.group(1) not in self.jobs_names:
-            return
-
-        bot_msg = self.bot.reply_to(msg, wait_msg(WAIT_TIME, msg.message_id))
-
-        job = Job(bot_msg, self.jobs_names[result.group(1)])
-        self.build_job(job)
+        if result and result.group(1) in self.jobs_names:
+            self.build_job(msg, self.jobs_names[result.group(1)])
 
     def cancel_handler(self, message):
         str_cancel_msg_id = message.text[len('/cancel_'):]
@@ -88,7 +86,12 @@ class Constantine:
                                            chat_id=job.chat_id,
                                            message_id=job.bot_msg_id)
 
-    def build_job(self, job):
+    def all_handler(self, message):
+        reply_speech(self, message)
+
+    def build_job(self, msg, job_name):
+        bot_msg = self.bot.reply_to(msg, wait_msg(WAIT_TIME, msg.message_id))
+        job = Job(bot_msg, job_name)
         pending_jobs[job.human_msg_id] = job
         self.exec_task(self.countdown_task, job, time.time(), WAIT_TIME - 1)
 
