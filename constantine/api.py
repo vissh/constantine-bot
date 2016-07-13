@@ -44,6 +44,7 @@ class Job:
 
 class Constantine:
     build_pattern = re.compile('/build_(\w*)@?')
+    cancel_pattern = re.compile('/cancel_(\w*)@?')
 
     def __init__(self, token, jenkins_url, jenkins_username, jenkins_password,
                  jobs_names):
@@ -73,11 +74,11 @@ class Constantine:
             self.build_job(msg, self.jobs_names[result.group(1)])
 
     def cancel_handler(self, message):
-        str_cancel_msg_id = message.text[len('/cancel_'):]
-        if not str_cancel_msg_id.isdigit():
+        result = self.cancel_pattern.match(message.text)
+        if not result or not result.group(1).isdigit():
             return
 
-        cancel_msg_id = int(str_cancel_msg_id)
+        cancel_msg_id = int(result.group(1))
         with pending_jobs_lock:
             if cancel_msg_id in pending_jobs:
                 job = pending_jobs[cancel_msg_id]
